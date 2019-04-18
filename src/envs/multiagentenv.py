@@ -1,4 +1,4 @@
-class MultiAgentEnv(object):
+class MultiAgentEnvSMAC(object):
 
     def step(self, actions):
         """ Returns reward, terminated, info """

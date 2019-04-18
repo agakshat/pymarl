@@ -1,3 +1,4 @@
+import pdb
 import torch as th
 import numpy as np
 from types import SimpleNamespace as SN
@@ -103,7 +104,6 @@ class EpisodeBatch:
             v = th.tensor(v, dtype=dtype, device=self.device)
             self._check_safe_view(v, target[k][_slices])
             target[k][_slices] = v.view_as(target[k][_slices])
-
             if k in self.preprocess:
                 new_k = self.preprocess[k][0]
                 v = target[k][_slices]

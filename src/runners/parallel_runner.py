@@ -4,8 +4,7 @@ from components.episode_buffer import EpisodeBatch
 from multiprocessing import Pipe, Process
 import numpy as np
 import torch as th
-
-
+import pdb
 # Based (very) heavily on SubprocVecEnv from OpenAI Baselines
 # https://github.com/openai/baselines/blob/master/baselines/common/vec_env/subproc_vec_env.py
 class ParallelRunner:
@@ -137,19 +136,20 @@ class ParallelRunner:
                 if not terminated[idx]:
                     data = parent_conn.recv()
                     # Remaining data for this current timestep
-                    post_transition_data["reward"].append((data["reward"],))
+                    post_transition_data["reward"].append((data["reward"][0],))
 
-                    episode_returns[idx] += data["reward"]
+                    episode_returns[idx] += data["reward"][0]
                     episode_lengths[idx] += 1
                     if not test_mode:
                         self.env_steps_this_run += 1
 
                     env_terminated = False
-                    if data["terminated"]:
-                        final_env_infos.append(data["info"])
-                    if data["terminated"] and not data["info"].get("episode_limit", False):
+                    if np.all(data["terminated"]):
+                        final_env_infos.append(data["info"]['n'][0])
+
+                    if np.all(data["terminated"]) and not data["info"].get("episode_limit", False):
                         env_terminated = True
-                    terminated[idx] = data["terminated"]
+                    terminated[idx] = np.all(data["terminated"])
                     post_transition_data["terminated"].append((env_terminated,))
 
                     # Data for the next timestep needed to select an action
@@ -170,13 +170,13 @@ class ParallelRunner:
             self.t_env += self.env_steps_this_run
 
         # Get stats back for each env
-        for parent_conn in self.parent_conns:
-            parent_conn.send(("get_stats",None))
+        # for parent_conn in self.parent_conns:
+        #     parent_conn.send(("get_stats",None))
 
         env_stats = []
-        for parent_conn in self.parent_conns:
-            env_stat = parent_conn.recv()
-            env_stats.append(env_stat)
+        # for parent_conn in self.parent_conns:
+        #     env_stat = parent_conn.recv()
+        #     env_stats.append(env_stat)
 
         cur_stats = self.test_stats if test_mode else self.train_stats
         cur_returns = self.test_returns if test_mode else self.train_returns
@@ -218,11 +218,11 @@ def env_worker(remote, env_fn):
         if cmd == "step":
             actions = data
             # Take a step in the environment
-            reward, terminated, env_info = env.step(actions)
+            obs, reward, terminated, env_info = env.step(actions)
             # Return the observations, avail_actions and state to make the next action
             state = env.get_state()
             avail_actions = env.get_avail_actions()
-            obs = env.get_obs()
+            # obs = env.get_obs()
             remote.send({
                 # Data for the next timestep needed to pick an action
                 "state": state,
@@ -234,11 +234,11 @@ def env_worker(remote, env_fn):
                 "info": env_info
             })
         elif cmd == "reset":
-            env.reset()
+            obs = env.reset()
             remote.send({
                 "state": env.get_state(),
                 "avail_actions": env.get_avail_actions(),
-                "obs": env.get_obs()
+                "obs": obs
             })
         elif cmd == "close":
             env.close()
@@ -246,8 +246,8 @@ def env_worker(remote, env_fn):
             break
         elif cmd == "get_env_info":
             remote.send(env.get_env_info())
-        elif cmd == "get_stats":
-            remote.send(env.get_stats())
+        # elif cmd == "get_stats":
+        #     remote.send(env.get_stats())
         else:
             raise NotImplementedError
 
