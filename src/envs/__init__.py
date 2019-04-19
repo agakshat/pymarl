@@ -43,7 +43,7 @@ def make_multiagent_env(env_id, discrete_action, shaped_reward, num_agents,
 REGISTRY = {}
 # REGISTRY["sc2"] = partial(env_fn, env=StarCraft2Env)
 REGISTRY["simple_spread"] = partial(env_fn, env_id='simple_spread',discrete_action=True,shaped_reward=True,
-                            num_agents=3,blind_agents=True,team_spirit=0.5,dist_threshold=0.1,arena_size=1)
+                            num_agents=6,blind_agents=False,team_spirit=0.5,dist_threshold=0.1,arena_size=1)
 
 # if sys.platform == "linux":
 #     os.environ.setdefault("SC2PATH",
